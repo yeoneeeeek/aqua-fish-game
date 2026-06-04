@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mini Aqua Fish</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-wrap">
+    <section class="game-phone" aria-label="모바일 수조 게임">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow">Mini Aquarium</p>
+          <h1>몽글 수조</h1>
+        </div>
+        <div class="coin-box" aria-label="보유 코인">
+          <span class="coin-icon">●</span>
+          <span id="coinCount">0</span>
+        </div>
+      </header>
+
+      <section class="aquarium" id="aquarium" aria-label="아쿠아리움 수조">
+        <div class="water-glow"></div>
+        <div class="bubble bubble-1"></div>
+        <div class="bubble bubble-2"></div>
+        <div class="bubble bubble-3"></div>
+        <div class="bubble bubble-4"></div>
+        <div class="seaweed seaweed-1"></div>
+        <div class="seaweed seaweed-2"></div>
+        <div class="seaweed seaweed-3"></div>
+        <div class="sand"></div>
+      </section>
+
+      <section class="status-panel">
+        <div class="status-card">
+          <span class="label">물고기</span>
+          <strong id="fishCount">1마리</strong>
+        </div>
+        <div class="status-card">
+          <span class="label">최대 성장</span>
+          <strong id="growthStatus">0%</strong>
+        </div>
+      </section>
+
+      <section class="control-panel" aria-label="게임 조작 버튼">
+        <button type="button" class="action-btn feed" id="feedBtn">
+          <span>먹이주기</span>
+          <small id="feedCooldown">+10 coin</small>
+        </button>
+        <button type="button" class="action-btn clean" id="cleanBtn">
+          <span>수조청소</span>
+          <small id="cleanCooldown">+20 coin</small>
+        </button>
+      </section>
+
+      <button type="button" class="buy-btn" id="buyFishBtn">
+        물고기 구매하기 <span>100 coin</span>
+      </button>
+
+      <p class="notice" id="notice">먹이를 주고 수조를 관리해서 물고기를 늘려보세요!</p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
