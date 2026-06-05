@@ -145,6 +145,7 @@ function renderFish() {
     fishEl.dataset.id = fish.id;
     fishEl.innerHTML = `
       <span class="fish-speech" aria-hidden="true"></span>
+      <span class="growth-complete" aria-hidden="true">성장완료!</span>
       <span class="fish-tail"></span>
       <span class="fish-body"></span>
       <span class="fish-fin"></span>
@@ -205,11 +206,11 @@ function updateFishPositions(deltaSeconds) {
     const node = fishNodes.get(fish.id);
     if (node) {
       const isFacingRight = fish.vx > 0;
-      const flip = isFacingRight ? "scaleX(-1)" : "scaleX(1)";
       node.classList.toggle("facing-right", isFacingRight);
+      node.classList.toggle("is-grown", fish.growth >= MAX_GROWTH);
       node.style.left = `${fish.x}px`;
       node.style.top = `${fish.y}px`;
-      node.style.transform = `${flip} scale(${scale})`;
+      node.style.transform = `scale(${scale})`;
     }
   });
 }

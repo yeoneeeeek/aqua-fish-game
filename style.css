@@ -292,6 +292,36 @@ h1 {
 }
 .fish.type-5 .fish-tail { border-radius: 50%; clip-path: polygon(0 50%, 100% 6%, 78% 50%, 100% 94%); }
 
+
+.growth-complete {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 5;
+  min-width: max-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 224, 138, 0.96);
+  color: #164e63;
+  box-shadow: 0 8px 16px rgba(6, 95, 135, 0.14);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0;
+  transform: translate(-50%, 4px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.fish.is-grown .growth-complete {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.fish.is-grown .fish-speech.show {
+  bottom: calc(100% + 38px);
+}
+
 .fish-speech {
   position: absolute;
   left: 50%;
@@ -495,12 +525,13 @@ h1 {
   .aquarium { height: 445px; }
 }
 
-.fish.facing-right .fish-speech {
-  transform: translate(-50%, 6px) scaleX(-1) scale(0.86);
-}
-
-.fish.facing-right .fish-speech.show {
-  transform: translate(-50%, 0) scaleX(-1) scale(1);
+/* 방향 전환 시 말풍선/텍스트/성장표시는 뒤집히지 않도록 개별 요소만 반전 */
+.fish.facing-right .fish-body,
+.fish.facing-right .fish-tail,
+.fish.facing-right .fish-fin,
+.fish.facing-right .fish-eye,
+.fish.facing-right .fish-mouth {
+  transform: scaleX(-1);
 }
 
 .sell-modal {
