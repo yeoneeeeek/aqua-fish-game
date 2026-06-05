@@ -1,72 +1,87 @@
-const STORAGE_KEY = 'miniAquaFishGame:v1';
-const FEED_COOLDOWN = 60 * 1000;
+const STORAGE_KEY = "aquaFishGame_v2";
+
+const MAX_HEARTS = 5;
+const HEART_COOLDOWN = 15 * 1000;
 const CLEAN_COOLDOWN = 5 * 60 * 1000;
 const FISH_PRICE = 100;
+const FEED_REWARD = 10;
+const CLEAN_REWARD = 20;
 const MAX_GROWTH = 100;
 
-const aquarium = document.getElementById('aquarium');
-const coinCount = document.getElementById('coinCount');
-const fishCount = document.getElementById('fishCount');
-const growthStatus = document.getElementById('growthStatus');
-const feedBtn = document.getElementById('feedBtn');
-const cleanBtn = document.getElementById('cleanBtn');
-const buyFishBtn = document.getElementById('buyFishBtn');
-const feedCooldown = document.getElementById('feedCooldown');
-const cleanCooldown = document.getElementById('cleanCooldown');
-const notice = document.getElementById('notice');
+const aquarium = document.getElementById("aquarium");
+const coinCount = document.getElementById("coinCount");
+const heartCount = document.getElementById("heartCount");
+const heartTimer = document.getElementById("heartTimer");
+const fishCount = document.getElementById("fishCount");
+const feedBtn = document.getElementById("feedBtn");
+const cleanBtn = document.getElementById("cleanBtn");
+const cleanTimer = document.getElementById("cleanTimer");
+const buyFishBtn = document.getElementById("buyFishBtn");
+const resetBtn = document.getElementById("resetBtn");
 
-const fishColors = [
-  ['#ffb15e', '#ff6f91'],
-  ['#ffd45a', '#ff9d56'],
-  ['#87e1ff', '#4f8dff'],
-  ['#c49cff', '#7f7cff'],
-  ['#94e66f', '#2fbf8f']
-];
+const fishDesignTypes = [1, 2, 3, 4, 5];
 
 let state = loadState();
-let fishes = [];
-let lastFrame = performance.now();
+let fishNodes = new Map();
+let lastFrameTime = performance.now();
 
-function createDefaultState() {
+function createInitialState() {
   return {
     coins: 0,
-    lastFeedAt: 0,
+    hearts: MAX_HEARTS,
+    lastHeartAt: Date.now(),
     lastCleanAt: 0,
-    fishes: [createFishData()]
+    fish: [createFishData(true)]
   };
 }
 
-function createFishData() {
-  const rect = aquarium.getBoundingClientRect();
-  const color = fishColors[Math.floor(Math.random() * fishColors.length)];
-  const directionX = Math.random() > 0.5 ? 1 : -1;
-  const directionY = Math.random() > 0.5 ? 0.55 : -0.55;
+function createFishData(isFirst = false) {
+  const bounds = getAquariumBounds();
+  const angle = randomPick([-30, 30]) * Math.PI / 180;
+  const direction = Math.random() > 0.5 ? 1 : -1;
 
   return {
-    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
-    x: randomNumber(42, Math.max(43, rect.width - 88)),
-    y: randomNumber(58, Math.max(59, rect.height - 130)),
-    dx: directionX,
-    dy: directionY,
-    speed: randomNumber(18, 30),
-    growth: 0,
-    colors: color
+    id: crypto.randomUUID ? crypto.randomUUID() : `fish_${Date.now()}_${Math.random()}`,
+    type: isFirst ? 1 : randomPick(fishDesignTypes),
+    x: random(30, Math.max(31, bounds.width - 90)),
+    y: random(60, Math.max(61, bounds.height - 140)),
+    vx: direction * random(18, 31),
+    vy: Math.sin(angle) * random(14, 26),
+    growth: 0
+  };
+}
+
+function getAquariumBounds() {
+  return {
+    width: aquarium.clientWidth || 350,
+    height: aquarium.clientHeight || 455
   };
 }
 
 function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-
-  if (!saved) return createDefaultState();
-
   try {
-    const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed.fishes) || parsed.fishes.length === 0) {
-      return createDefaultState();
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!saved || !Array.isArray(saved.fish) || saved.fish.length === 0) {
+      return createInitialState();
     }
-    return parsed;
+
+    return {
+      coins: Number(saved.coins) || 0,
+      hearts: Math.min(MAX_HEARTS, Number(saved.hearts) || 0),
+      lastHeartAt: Number(saved.lastHeartAt) || Date.now(),
+      lastCleanAt: Number(saved.lastCleanAt) || 0,
+      fish: saved.fish.map((fish, index) => ({
+        id: fish.id || `fish_${index}_${Date.now()}`,
+        type: fish.type || randomPick(fishDesignTypes),
+        x: Number(fish.x) || random(40, 240),
+        y: Number(fish.y) || random(80, 280),
+        vx: Number(fish.vx) || randomPick([-1, 1]) * random(18, 31),
+        vy: Number(fish.vy) || randomPick([-1, 1]) * random(8, 18),
+        growth: Math.min(MAX_GROWTH, Number(fish.growth) || 0)
+      }))
+    };
   } catch (error) {
-    return createDefaultState();
+    return createInitialState();
   }
 }
 
@@ -74,181 +89,224 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function renderFishes() {
-  fishes.forEach(fish => fish.el.remove());
-  fishes = [];
+function random(min, max) {
+  return Math.random() * (max - min) + min;
+}
 
-  state.fishes.forEach(data => {
-    const fish = document.createElement('div');
-    fish.className = 'fish';
-    fish.dataset.id = data.id;
-    fish.innerHTML = `
-      <div class="fish-tail"></div>
-      <div class="fish-body">
-        <div class="fish-eye"></div>
-        <div class="fish-fin"></div>
-      </div>
+function randomPick(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function formatTime(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const min = Math.floor(total / 60);
+  const sec = total % 60;
+  return min > 0 ? `${min}:${String(sec).padStart(2, "0")}` : `${sec}s`;
+}
+
+function restoreHearts() {
+  if (state.hearts >= MAX_HEARTS) {
+    state.hearts = MAX_HEARTS;
+    state.lastHeartAt = Date.now();
+    return;
+  }
+
+  const now = Date.now();
+  const elapsed = now - state.lastHeartAt;
+  const recovered = Math.floor(elapsed / HEART_COOLDOWN);
+
+  if (recovered > 0) {
+    state.hearts = Math.min(MAX_HEARTS, state.hearts + recovered);
+    state.lastHeartAt += recovered * HEART_COOLDOWN;
+
+    if (state.hearts >= MAX_HEARTS) {
+      state.lastHeartAt = now;
+    }
+
+    saveState();
+  }
+}
+
+function renderFish() {
+  state.fish.forEach(fish => {
+    if (fishNodes.has(fish.id)) return;
+
+    const fishEl = document.createElement("div");
+    fishEl.className = `fish type-${fish.type}`;
+    fishEl.dataset.id = fish.id;
+    fishEl.innerHTML = `
+      <span class="fish-tail"></span>
+      <span class="fish-body"></span>
+      <span class="fish-fin"></span>
+      <span class="fish-eye"></span>
+      <span class="fish-mouth"></span>
     `;
+    aquarium.appendChild(fishEl);
+    fishNodes.set(fish.id, fishEl);
+  });
+}
 
-    const body = fish.querySelector('.fish-body');
-    const tail = fish.querySelector('.fish-tail');
-    body.style.background = `linear-gradient(135deg, ${data.colors[0]}, ${data.colors[1]})`;
-    tail.style.background = data.colors[0];
+function updateFishPositions(deltaSeconds) {
+  const bounds = getAquariumBounds();
+  const fishWidth = 58;
+  const fishHeight = 34;
+  const padding = 13;
 
-    aquarium.appendChild(fish);
-    fishes.push({ el: fish, data });
+  state.fish.forEach(fish => {
+    fish.x += fish.vx * deltaSeconds;
+    fish.y += fish.vy * deltaSeconds;
+
+    const scale = 1 + fish.growth / 100;
+    const maxX = bounds.width - fishWidth * scale - padding;
+    const maxY = bounds.height - fishHeight * scale - 86;
+    const minX = padding;
+    const minY = 42;
+
+    if (fish.x <= minX || fish.x >= maxX) {
+      fish.x = Math.min(Math.max(fish.x, minX), maxX);
+      const direction = fish.x <= minX ? 1 : -1;
+      const angle = randomPick([-30, 30]) * Math.PI / 180;
+      const speed = random(18, 31);
+      fish.vx = direction * speed;
+      fish.vy = Math.sin(angle) * random(20, 34);
+    }
+
+    if (fish.y <= minY || fish.y >= maxY) {
+      fish.y = Math.min(Math.max(fish.y, minY), maxY);
+      fish.vy *= -1;
+    }
+
+    const node = fishNodes.get(fish.id);
+    if (node) {
+      const flip = fish.vx > 0 ? "scaleX(-1)" : "scaleX(1)";
+      node.style.left = `${fish.x}px`;
+      node.style.top = `${fish.y}px`;
+      node.style.transform = `${flip} scale(${scale})`;
+    }
   });
 }
 
 function updateUI() {
+  restoreHearts();
+
   coinCount.textContent = state.coins;
-  fishCount.textContent = `${state.fishes.length}마리`;
+  heartCount.textContent = state.hearts;
+  fishCount.textContent = `${state.fish.length}마리`;
 
-  const maxGrowth = Math.max(...state.fishes.map(fish => fish.growth));
-  growthStatus.textContent = `${maxGrowth}%`;
+  if (state.hearts >= MAX_HEARTS) {
+    heartTimer.textContent = "MAX";
+  } else {
+    const nextHeartIn = HEART_COOLDOWN - (Date.now() - state.lastHeartAt);
+    heartTimer.textContent = formatTime(nextHeartIn);
+  }
 
+  const cleanRemain = CLEAN_COOLDOWN - (Date.now() - state.lastCleanAt);
+  cleanBtn.disabled = cleanRemain > 0;
+  cleanTimer.textContent = cleanRemain > 0 ? formatTime(cleanRemain) : "READY";
+
+  feedBtn.disabled = state.hearts <= 0;
   buyFishBtn.disabled = state.coins < FISH_PRICE;
 }
 
-function updateCooldowns() {
-  const now = Date.now();
-  const feedRemaining = Math.max(0, FEED_COOLDOWN - (now - state.lastFeedAt));
-  const cleanRemaining = Math.max(0, CLEAN_COOLDOWN - (now - state.lastCleanAt));
+function showToast(text) {
+  const toast = document.createElement("div");
+  toast.className = "sparkle";
+  toast.textContent = text;
+  toast.style.left = `${random(90, aquarium.clientWidth - 130)}px`;
+  toast.style.top = `${random(70, 190)}px`;
+  aquarium.appendChild(toast);
+  setTimeout(() => toast.remove(), 900);
+}
 
-  feedBtn.disabled = feedRemaining > 0;
-  cleanBtn.disabled = cleanRemaining > 0;
-
-  feedCooldown.textContent = feedRemaining > 0 ? `${formatTime(feedRemaining)} 후 가능` : '+10 coin';
-  cleanCooldown.textContent = cleanRemaining > 0 ? `${formatTime(cleanRemaining)} 후 가능` : '+20 coin';
+function dropFood() {
+  for (let i = 0; i < 5; i += 1) {
+    const food = document.createElement("span");
+    food.className = "feed-piece";
+    food.style.left = `${random(55, aquarium.clientWidth - 65)}px`;
+    food.style.top = `${random(38, 84)}px`;
+    food.style.animationDelay = `${i * 0.08}s`;
+    aquarium.appendChild(food);
+    setTimeout(() => food.remove(), 1700);
+  }
 }
 
 function feedFish() {
-  if (Date.now() - state.lastFeedAt < FEED_COOLDOWN) return;
+  restoreHearts();
 
-  state.coins += 10;
-  state.lastFeedAt = Date.now();
-  state.fishes = state.fishes.map(fish => ({
+  if (state.hearts <= 0) {
+    showToast("하트 부족!");
+    updateUI();
+    return;
+  }
+
+  state.hearts -= 1;
+  if (state.hearts === MAX_HEARTS - 1) {
+    state.lastHeartAt = Date.now();
+  }
+
+  state.coins += FEED_REWARD;
+  state.fish = state.fish.map(fish => ({
     ...fish,
     growth: Math.min(MAX_GROWTH, fish.growth + 1)
   }));
 
-  createFoodEffect();
-  showNotice('냠냠! 물고기들이 조금 더 통통해졌어요. +10 coin');
+  dropFood();
+  showToast("+10 🪙");
   saveState();
   updateUI();
-  updateCooldowns();
 }
 
 function cleanTank() {
-  if (Date.now() - state.lastCleanAt < CLEAN_COOLDOWN) return;
+  const remain = CLEAN_COOLDOWN - (Date.now() - state.lastCleanAt);
+  if (remain > 0) return;
 
-  state.coins += 20;
+  state.coins += CLEAN_REWARD;
   state.lastCleanAt = Date.now();
-
-  const shine = document.createElement('div');
-  shine.className = 'clean-shine';
-  aquarium.appendChild(shine);
-  shine.addEventListener('animationend', () => shine.remove());
-
-  showNotice('반짝반짝! 수조가 깨끗해졌어요. +20 coin');
+  showToast("깨끗해! +20 🪙");
   saveState();
   updateUI();
-  updateCooldowns();
 }
 
 function buyFish() {
   if (state.coins < FISH_PRICE) return;
 
   state.coins -= FISH_PRICE;
-  state.fishes.push(createFishData());
-  renderFishes();
-  showNotice('새로운 물고기가 수조에 들어왔어요!');
+  const newFish = createFishData(false);
+  state.fish.push(newFish);
+  renderFish();
+  showToast("새 친구 등장! 🐠");
   saveState();
   updateUI();
 }
 
-function swim(currentTime) {
-  const delta = (currentTime - lastFrame) / 1000;
-  lastFrame = currentTime;
+function resetGame() {
+  const ok = confirm("저장된 게임 데이터를 초기화할까요?");
+  if (!ok) return;
 
-  const rect = aquarium.getBoundingClientRect();
-  const padding = 10;
-
-  fishes.forEach(({ el, data }) => {
-    const scale = 1 + data.growth / 100;
-    const fishWidth = 58 * scale;
-    const fishHeight = 34 * scale;
-
-    data.x += data.dx * data.speed * delta;
-    data.y += data.dy * data.speed * delta;
-
-    if (data.x <= padding || data.x + fishWidth >= rect.width - padding) {
-      data.dx *= -1;
-      data.dy = Math.random() > 0.5 ? 0.58 : -0.58;
-      data.y += data.dy * 8;
-    }
-
-    if (data.y <= 42 || data.y + fishHeight >= rect.height - 86) {
-      data.dy *= -1;
-    }
-
-    data.x = clamp(data.x, padding, rect.width - fishWidth - padding);
-    data.y = clamp(data.y, 42, rect.height - fishHeight - 86);
-
-    const flip = data.dx > 0 ? 'scaleX(1)' : 'scaleX(-1)';
-    el.style.transform = `translate(${data.x}px, ${data.y}px) ${flip} scale(${scale})`;
-  });
-
-  requestAnimationFrame(swim);
+  localStorage.removeItem(STORAGE_KEY);
+  state = createInitialState();
+  fishNodes.forEach(node => node.remove());
+  fishNodes.clear();
+  renderFish();
+  saveState();
+  updateUI();
 }
 
-function createFoodEffect() {
-  for (let i = 0; i < 10; i += 1) {
-    const dot = document.createElement('span');
-    dot.className = 'feed-dot';
-    dot.style.left = `${randomNumber(60, aquarium.clientWidth - 70)}px`;
-    dot.style.top = `${randomNumber(40, 120)}px`;
-    dot.style.animationDelay = `${i * 0.04}s`;
-    aquarium.appendChild(dot);
-    dot.addEventListener('animationend', () => dot.remove());
-  }
+function gameLoop(currentTime) {
+  const deltaSeconds = Math.min(0.04, (currentTime - lastFrameTime) / 1000);
+  lastFrameTime = currentTime;
+
+  updateFishPositions(deltaSeconds);
+  requestAnimationFrame(gameLoop);
 }
 
-function showNotice(message) {
-  notice.textContent = message;
-}
+feedBtn.addEventListener("click", feedFish);
+cleanBtn.addEventListener("click", cleanTank);
+buyFishBtn.addEventListener("click", buyFish);
+resetBtn.addEventListener("click", resetGame);
 
-function formatTime(ms) {
-  const totalSeconds = Math.ceil(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes <= 0) return `${seconds}초`;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
-function randomNumber(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
-feedBtn.addEventListener('click', feedFish);
-cleanBtn.addEventListener('click', cleanTank);
-buyFishBtn.addEventListener('click', buyFish);
-
-window.addEventListener('beforeunload', saveState);
-window.addEventListener('resize', () => {
-  state.fishes.forEach(fish => {
-    fish.x = clamp(fish.x, 10, aquarium.clientWidth - 80);
-    fish.y = clamp(fish.y, 42, aquarium.clientHeight - 120);
-  });
-});
-
-renderFishes();
+renderFish();
 updateUI();
-updateCooldowns();
-setInterval(updateCooldowns, 500);
-requestAnimationFrame(swim);
+setInterval(updateUI, 500);
+setInterval(saveState, 3000);
+requestAnimationFrame(gameLoop);
