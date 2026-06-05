@@ -5,7 +5,7 @@ const HEART_COOLDOWN = 15 * 1000;
 const CLEAN_COOLDOWN = 5 * 60 * 1000;
 const FISH_PRICE = 100;
 const FEED_REWARD = 10;
-const CLEAN_REWARD = 20;
+const CLEAN_REWARD = 30;
 const MAX_GROWTH = 100;
 
 const aquarium = document.getElementById("aquarium");
@@ -20,6 +20,7 @@ const buyFishBtn = document.getElementById("buyFishBtn");
 const resetBtn = document.getElementById("resetBtn");
 
 const fishDesignTypes = [1, 2, 3, 4, 5];
+const fishMessages = ["나랑 놀래?", "배고파요", "밥주세요", "여기는 어디지?", "나 이만큼 컸어요!"];
 
 let state = loadState();
 let fishNodes = new Map();
@@ -47,7 +48,8 @@ function createFishData(isFirst = false) {
     y: random(60, Math.max(61, bounds.height - 140)),
     vx: direction * random(18, 31),
     vy: Math.sin(angle) * random(14, 26),
-    growth: 0
+    growth: 0,
+    isInteracting: false
   };
 }
 
@@ -77,7 +79,8 @@ function loadState() {
         y: Number(fish.y) || random(80, 280),
         vx: Number(fish.vx) || randomPick([-1, 1]) * random(18, 31),
         vy: Number(fish.vy) || randomPick([-1, 1]) * random(8, 18),
-        growth: Math.min(MAX_GROWTH, Number(fish.growth) || 0)
+        growth: Math.min(MAX_GROWTH, Number(fish.growth) || 0),
+        isInteracting: false
       }))
     };
   } catch (error) {
@@ -135,12 +138,19 @@ function renderFish() {
     fishEl.className = `fish type-${fish.type}`;
     fishEl.dataset.id = fish.id;
     fishEl.innerHTML = `
+      <span class="fish-speech" aria-hidden="true"></span>
       <span class="fish-tail"></span>
       <span class="fish-body"></span>
       <span class="fish-fin"></span>
       <span class="fish-eye"></span>
       <span class="fish-mouth"></span>
     `;
+
+    fishEl.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      interactWithFish(fish.id);
+    });
+
     aquarium.appendChild(fishEl);
     fishNodes.set(fish.id, fishEl);
   });
@@ -153,6 +163,8 @@ function updateFishPositions(deltaSeconds) {
   const padding = 13;
 
   state.fish.forEach(fish => {
+    if (fish.isInteracting) return;
+
     fish.x += fish.vx * deltaSeconds;
     fish.y += fish.vy * deltaSeconds;
 
@@ -230,6 +242,46 @@ function dropFood() {
   }
 }
 
+function showFishSpeech(fishId, message = randomPick(fishMessages)) {
+  const node = fishNodes.get(fishId);
+  if (!node) return;
+
+  const speech = node.querySelector(".fish-speech");
+  if (!speech) return;
+
+  speech.textContent = message;
+  speech.classList.remove("show");
+  void speech.offsetWidth;
+  speech.classList.add("show");
+
+  clearTimeout(speech.hideTimer);
+  speech.hideTimer = setTimeout(() => {
+    speech.classList.remove("show");
+  }, 2600);
+}
+
+function interactWithFish(fishId) {
+  const fish = state.fish.find(item => item.id === fishId);
+  const node = fishNodes.get(fishId);
+
+  if (!fish || !node || fish.isInteracting) return;
+
+  fish.isInteracting = true;
+  node.classList.add("is-interacting");
+  showFishSpeech(fishId, "나랑 놀래?");
+
+  setTimeout(() => {
+    node.classList.remove("is-interacting");
+    fish.isInteracting = false;
+  }, 1900);
+}
+
+function showRandomFishSpeech() {
+  if (!state.fish.length) return;
+  const fish = randomPick(state.fish);
+  showFishSpeech(fish.id);
+}
+
 function feedFish() {
   restoreHearts();
 
@@ -251,6 +303,7 @@ function feedFish() {
   }));
 
   dropFood();
+  state.fish.forEach(fish => showFishSpeech(fish.id, randomPick(["배고파요", "밥주세요", "나 이만큼 컸어요!"])));
   showToast("+10 🪙");
   saveState();
   updateUI();
@@ -262,7 +315,7 @@ function cleanTank() {
 
   state.coins += CLEAN_REWARD;
   state.lastCleanAt = Date.now();
-  showToast("깨끗해! +20 🪙");
+  showToast("깨끗해! +30 🪙");
   saveState();
   updateUI();
 }
@@ -309,4 +362,6 @@ renderFish();
 updateUI();
 setInterval(updateUI, 500);
 setInterval(saveState, 3000);
+setInterval(showRandomFishSpeech, 6500);
+setTimeout(showRandomFishSpeech, 1800);
 requestAnimationFrame(gameLoop);

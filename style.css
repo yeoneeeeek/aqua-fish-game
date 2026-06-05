@@ -192,14 +192,14 @@ h1 {
 
 .coral-1 {
   left: 100px;
-  background: #ff7aa8;
-  box-shadow: 12px -14px 0 -5px #ff9abc, -11px -9px 0 -6px #ff6398;
+  background: #9ca3af;
+  box-shadow: 12px -14px 0 -5px #cbd5e1, -11px -9px 0 -6px #6b7280;
 }
 
 .coral-2 {
   right: 92px;
-  background: #ffb347;
-  box-shadow: 10px -13px 0 -5px #ffd166, -12px -8px 0 -6px #ff9f1c;
+  background: #94a3b8;
+  box-shadow: 10px -13px 0 -5px #d1d5db, -12px -8px 0 -6px #64748b;
 }
 
 .fish {
@@ -291,6 +291,79 @@ h1 {
   background: var(--fish-sub);
 }
 .fish.type-5 .fish-tail { border-radius: 50%; clip-path: polygon(0 50%, 100% 6%, 78% 50%, 100% 94%); }
+
+.fish-speech {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  z-index: 4;
+  min-width: max-content;
+  max-width: 118px;
+  padding: 7px 10px;
+  border-radius: 14px 14px 14px 5px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #164e63;
+  box-shadow: 0 8px 16px rgba(6, 95, 135, 0.14);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, 6px) scale(0.86);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.fish-speech::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  transform: rotate(45deg);
+}
+
+.fish-speech.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.fish.is-interacting {
+  z-index: 5;
+  animation: fishTouchReact 1.9s ease-in-out;
+}
+
+.fish.is-interacting .fish-body,
+.fish.is-interacting .fish-tail,
+.fish.is-interacting .fish-fin {
+  animation: fishShake 0.26s ease-in-out 5;
+}
+
+.fish.is-interacting .fish-eye {
+  animation: fishBlink 0.36s ease-in-out 3;
+}
+
+@keyframes fishTouchReact {
+  0%, 100% { margin-top: 0; }
+  14% { margin-top: -12px; }
+  28% { margin-top: 9px; }
+  42% { margin-top: -10px; }
+  56% { margin-top: 7px; }
+  70% { margin-top: -5px; }
+}
+
+@keyframes fishShake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+@keyframes fishBlink {
+  0%, 45%, 100% { transform: scaleY(1); }
+  50%, 70% { transform: scaleY(0.12); }
+}
 
 @keyframes tailWiggle {
   from { transform: rotate(-6deg) scaleX(0.92); }
