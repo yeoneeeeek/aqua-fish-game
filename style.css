@@ -212,6 +212,17 @@ h1 {
   will-change: transform, left, top;
 }
 
+.fish-art {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
+  transition: transform 0.18s ease;
+}
+
+.fish.facing-right .fish-art {
+  transform: scaleX(-1);
+}
+
 .fish-body {
   position: absolute;
   inset: 4px 10px 4px 4px;
@@ -365,10 +376,12 @@ h1 {
   animation: fishTouchReact 1.9s ease-in-out;
 }
 
-.fish.is-interacting .fish-body,
-.fish.is-interacting .fish-tail,
-.fish.is-interacting .fish-fin {
+.fish.is-interacting .fish-art {
   animation: fishShake 0.26s ease-in-out 5;
+}
+
+.fish.is-interacting.facing-right .fish-art {
+  animation: fishShakeRight 0.26s ease-in-out 5;
 }
 
 .fish.is-interacting .fish-eye {
@@ -388,6 +401,12 @@ h1 {
   0%, 100% { transform: rotate(0deg); }
   25% { transform: rotate(-8deg); }
   75% { transform: rotate(8deg); }
+}
+
+@keyframes fishShakeRight {
+  0%, 100% { transform: scaleX(-1) rotate(0deg); }
+  25% { transform: scaleX(-1) rotate(-8deg); }
+  75% { transform: scaleX(-1) rotate(8deg); }
 }
 
 @keyframes fishBlink {
@@ -525,14 +544,7 @@ h1 {
   .aquarium { height: 445px; }
 }
 
-/* 방향 전환 시 말풍선/텍스트/성장표시는 뒤집히지 않도록 개별 요소만 반전 */
-.fish.facing-right .fish-body,
-.fish.facing-right .fish-tail,
-.fish.facing-right .fish-fin,
-.fish.facing-right .fish-eye,
-.fish.facing-right .fish-mouth {
-  transform: scaleX(-1);
-}
+/* 방향 전환은 물고기 파츠 묶음에만 적용해 말풍선/텍스트/성장표시가 뒤집히지 않도록 처리 */
 
 .sell-modal {
   position: absolute;

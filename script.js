@@ -150,11 +150,13 @@ function renderFish() {
     fishEl.innerHTML = `
       <span class="fish-speech" aria-hidden="true"></span>
       <span class="growth-complete" aria-hidden="true">성장완료!</span>
-      <span class="fish-tail"></span>
-      <span class="fish-body"></span>
-      <span class="fish-fin"></span>
-      <span class="fish-eye"></span>
-      <span class="fish-mouth"></span>
+      <span class="fish-art" aria-hidden="true">
+        <span class="fish-tail"></span>
+        <span class="fish-body"></span>
+        <span class="fish-fin"></span>
+        <span class="fish-eye"></span>
+        <span class="fish-mouth"></span>
+      </span>
     `;
 
     fishEl.addEventListener("pointerdown", event => {
