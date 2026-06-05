@@ -18,6 +18,9 @@ const cleanBtn = document.getElementById("cleanBtn");
 const cleanTimer = document.getElementById("cleanTimer");
 const buyFishBtn = document.getElementById("buyFishBtn");
 const resetBtn = document.getElementById("resetBtn");
+const sellModal = document.getElementById("sellModal");
+const sellYesBtn = document.getElementById("sellYesBtn");
+const sellNoBtn = document.getElementById("sellNoBtn");
 
 const fishDesignTypes = [1, 2, 3, 4, 5];
 const fishMessages = ["나랑 놀래?", "배고파요", "밥주세요", "여기는 어디지?", "나 이만큼 컸어요!"];
@@ -25,6 +28,9 @@ const fishMessages = ["나랑 놀래?", "배고파요", "밥주세요", "여기�
 let state = loadState();
 let fishNodes = new Map();
 let lastFrameTime = performance.now();
+let sellTargetFishId = null;
+let longPressTimer = null;
+let longPressTriggered = false;
 
 function createInitialState() {
   return {
@@ -148,8 +154,16 @@ function renderFish() {
 
     fishEl.addEventListener("pointerdown", event => {
       event.preventDefault();
-      interactWithFish(fish.id);
+      startFishPress(fish.id);
     });
+
+    fishEl.addEventListener("pointerup", event => {
+      event.preventDefault();
+      finishFishPress(fish.id);
+    });
+
+    fishEl.addEventListener("pointercancel", cancelFishPress);
+    fishEl.addEventListener("pointerleave", cancelFishPress);
 
     aquarium.appendChild(fishEl);
     fishNodes.set(fish.id, fishEl);
@@ -190,7 +204,9 @@ function updateFishPositions(deltaSeconds) {
 
     const node = fishNodes.get(fish.id);
     if (node) {
-      const flip = fish.vx > 0 ? "scaleX(-1)" : "scaleX(1)";
+      const isFacingRight = fish.vx > 0;
+      const flip = isFacingRight ? "scaleX(-1)" : "scaleX(1)";
+      node.classList.toggle("facing-right", isFacingRight);
       node.style.left = `${fish.x}px`;
       node.style.top = `${fish.y}px`;
       node.style.transform = `${flip} scale(${scale})`;
@@ -258,6 +274,74 @@ function showFishSpeech(fishId, message = randomPick(fishMessages)) {
   speech.hideTimer = setTimeout(() => {
     speech.classList.remove("show");
   }, 2600);
+}
+
+function startFishPress(fishId) {
+  cancelFishPress();
+  longPressTriggered = false;
+  longPressTimer = setTimeout(() => {
+    longPressTriggered = true;
+    openSellModal(fishId);
+  }, 650);
+}
+
+function finishFishPress(fishId) {
+  clearTimeout(longPressTimer);
+  longPressTimer = null;
+
+  if (longPressTriggered) {
+    longPressTriggered = false;
+    return;
+  }
+
+  interactWithFish(fishId);
+}
+
+function cancelFishPress() {
+  clearTimeout(longPressTimer);
+  longPressTimer = null;
+}
+
+function openSellModal(fishId) {
+  const fish = state.fish.find(item => item.id === fishId);
+
+  if (!fish) return;
+
+  if (fish.growth < MAX_GROWTH) {
+    showToast("다 자란 물고기만 판매 가능!");
+    return;
+  }
+
+  sellTargetFishId = fishId;
+  sellModal.classList.add("show");
+  sellModal.setAttribute("aria-hidden", "false");
+}
+
+function closeSellModal() {
+  sellTargetFishId = null;
+  sellModal.classList.remove("show");
+  sellModal.setAttribute("aria-hidden", "true");
+}
+
+function sellFish() {
+  if (!sellTargetFishId) return;
+
+  const targetIndex = state.fish.findIndex(fish => fish.id === sellTargetFishId);
+  if (targetIndex === -1) {
+    closeSellModal();
+    return;
+  }
+
+  const [soldFish] = state.fish.splice(targetIndex, 1);
+  const node = fishNodes.get(soldFish.id);
+  if (node) node.remove();
+  fishNodes.delete(soldFish.id);
+
+  state.coins += 500;
+  showToast("판매 완료! +500 🪙");
+  closeSellModal();
+  saveState();
+  updateUI();
 }
 
 function interactWithFish(fishId) {
@@ -357,6 +441,11 @@ feedBtn.addEventListener("click", feedFish);
 cleanBtn.addEventListener("click", cleanTank);
 buyFishBtn.addEventListener("click", buyFish);
 resetBtn.addEventListener("click", resetGame);
+sellYesBtn.addEventListener("click", sellFish);
+sellNoBtn.addEventListener("click", closeSellModal);
+sellModal.addEventListener("click", event => {
+  if (event.target === sellModal) closeSellModal();
+});
 
 renderFish();
 updateUI();

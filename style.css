@@ -494,3 +494,73 @@ h1 {
   }
   .aquarium { height: 445px; }
 }
+
+.fish.facing-right .fish-speech {
+  transform: translate(-50%, 6px) scaleX(-1) scale(0.86);
+}
+
+.fish.facing-right .fish-speech.show {
+  transform: translate(-50%, 0) scaleX(-1) scale(1);
+}
+
+.sell-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(9, 54, 75, 0.32);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.sell-modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sell-modal__box {
+  width: min(100%, 270px);
+  padding: 22px 18px 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 20px 38px rgba(6, 95, 135, 0.22);
+  text-align: center;
+  transform: translateY(8px) scale(0.96);
+  transition: transform 0.2s ease;
+}
+
+.sell-modal.show .sell-modal__box {
+  transform: translateY(0) scale(1);
+}
+
+.sell-modal__box p {
+  margin: 0 0 16px;
+  font-size: 17px;
+  font-weight: 900;
+  color: #164e63;
+}
+
+.sell-modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.sell-modal__actions button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: #e0f7ff;
+  color: #164e63;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 8px 14px rgba(6, 95, 135, 0.12);
+}
+
+.sell-modal__actions button:first-child {
+  background: linear-gradient(180deg, #ffe08a 0%, #ffb703 100%);
+}
