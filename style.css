@@ -207,6 +207,7 @@ h1 {
   width: 58px;
   height: 34px;
   transform-origin: center;
+  transform: scale(var(--fish-scale, 1));
   filter: drop-shadow(0 6px 8px rgba(0, 71, 104, 0.22));
   transition: filter 0.2s ease;
   will-change: transform, left, top;
@@ -216,11 +217,12 @@ h1 {
   position: absolute;
   inset: 0;
   transform-origin: center;
+  transform: scaleX(var(--face-scale, 1));
   transition: transform 0.18s ease;
 }
 
-.fish.facing-right .fish-art {
-  transform: scaleX(-1);
+.fish.facing-right {
+  --face-scale: -1;
 }
 
 .fish-body {
@@ -380,8 +382,8 @@ h1 {
   animation: fishShake 0.26s ease-in-out 5;
 }
 
-.fish.is-interacting.facing-right .fish-art {
-  animation: fishShakeRight 0.26s ease-in-out 5;
+.fish.is-turning .fish-art {
+  animation: fishTurnPop 0.28s ease-out;
 }
 
 .fish.is-interacting .fish-eye {
@@ -398,15 +400,15 @@ h1 {
 }
 
 @keyframes fishShake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-8deg); }
-  75% { transform: rotate(8deg); }
+  0%, 100% { transform: scaleX(var(--face-scale, 1)) rotate(0deg); }
+  25% { transform: scaleX(var(--face-scale, 1)) rotate(-8deg); }
+  75% { transform: scaleX(var(--face-scale, 1)) rotate(8deg); }
 }
 
-@keyframes fishShakeRight {
-  0%, 100% { transform: scaleX(-1) rotate(0deg); }
-  25% { transform: scaleX(-1) rotate(-8deg); }
-  75% { transform: scaleX(-1) rotate(8deg); }
+@keyframes fishTurnPop {
+  0% { transform: scaleX(var(--face-scale, 1)) scale(0.94); }
+  70% { transform: scaleX(var(--face-scale, 1)) scale(1.05); }
+  100% { transform: scaleX(var(--face-scale, 1)) scale(1); }
 }
 
 @keyframes fishBlink {

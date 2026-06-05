@@ -88,9 +88,14 @@ function loadState() {
         y: Number(fish.y) || random(80, 280),
         vx: Number(fish.vx) || randomPick([-1, 1]) * random(18, 31),
         vy: Number(fish.vy) || randomPick([-1, 1]) * random(8, 18),
-        feedCount: Math.min(MAX_FEED_COUNT, Number(fish.feedCount) || Math.round((Number(fish.growth) || 0) / GROWTH_PER_FEED)),
-        growth: Math.min(MAX_GROWTH, Number(fish.growth) || 0),
+        feedCount: Math.min(MAX_FEED_COUNT, Number.isFinite(Number(fish.feedCount)) && Number(fish.feedCount) > 0
+          ? Number(fish.feedCount)
+          : Math.round((Number(fish.growth) || 0) / GROWTH_PER_FEED)),
+        growth: 0,
         isInteracting: false
+      })).map(fish => ({
+        ...fish,
+        growth: Math.min(MAX_GROWTH, fish.feedCount * GROWTH_PER_FEED)
       }))
     };
   } catch (error) {
@@ -202,6 +207,7 @@ function updateFishPositions(deltaSeconds) {
       const speed = random(18, 31);
       fish.vx = direction * speed;
       fish.vy = Math.sin(angle) * random(20, 34);
+      fish.justTurned = true;
     }
 
     if (fish.y <= minY || fish.y >= maxY) {
@@ -213,10 +219,17 @@ function updateFishPositions(deltaSeconds) {
     if (node) {
       const isFacingRight = fish.vx > 0;
       node.classList.toggle("facing-right", isFacingRight);
-      node.classList.toggle("is-grown", fish.growth >= MAX_GROWTH);
+      node.classList.toggle("is-grown", fish.feedCount >= MAX_FEED_COUNT || fish.growth >= MAX_GROWTH);
       node.style.left = `${fish.x}px`;
       node.style.top = `${fish.y}px`;
-      node.style.transform = `scale(${scale})`;
+      node.style.setProperty("--fish-scale", scale.toFixed(4));
+
+      if (fish.justTurned) {
+        node.classList.remove("is-turning");
+        void node.offsetWidth;
+        node.classList.add("is-turning");
+        fish.justTurned = false;
+      }
     }
   });
 }
@@ -314,7 +327,7 @@ function openSellModal(fishId) {
 
   if (!fish) return;
 
-  if (fish.growth < MAX_GROWTH) {
+  if (fish.feedCount < MAX_FEED_COUNT && fish.growth < MAX_GROWTH) {
     showToast("다 자란 물고기만 판매 가능!");
     return;
   }
@@ -390,11 +403,14 @@ function feedFish() {
   state.coins += FEED_REWARD;
   state.fish = state.fish.map(fish => {
     const nextFeedCount = Math.min(MAX_FEED_COUNT, (Number(fish.feedCount) || 0) + 1);
+    const nextGrowth = nextFeedCount >= MAX_FEED_COUNT
+      ? MAX_GROWTH
+      : Number((nextFeedCount * GROWTH_PER_FEED).toFixed(4));
 
     return {
       ...fish,
       feedCount: nextFeedCount,
-      growth: Math.min(MAX_GROWTH, nextFeedCount * GROWTH_PER_FEED)
+      growth: nextGrowth
     };
   });
 
