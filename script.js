@@ -7,6 +7,8 @@ const FISH_PRICE = 100;
 const FEED_REWARD = 10;
 const CLEAN_REWARD = 30;
 const MAX_GROWTH = 100;
+const MAX_FEED_COUNT = 30;
+const GROWTH_PER_FEED = MAX_GROWTH / MAX_FEED_COUNT;
 
 const aquarium = document.getElementById("aquarium");
 const coinCount = document.getElementById("coinCount");
@@ -55,6 +57,7 @@ function createFishData(isFirst = false) {
     vx: direction * random(18, 31),
     vy: Math.sin(angle) * random(14, 26),
     growth: 0,
+    feedCount: 0,
     isInteracting: false
   };
 }
@@ -85,6 +88,7 @@ function loadState() {
         y: Number(fish.y) || random(80, 280),
         vx: Number(fish.vx) || randomPick([-1, 1]) * random(18, 31),
         vy: Number(fish.vy) || randomPick([-1, 1]) * random(8, 18),
+        feedCount: Math.min(MAX_FEED_COUNT, Number(fish.feedCount) || Math.round((Number(fish.growth) || 0) / GROWTH_PER_FEED)),
         growth: Math.min(MAX_GROWTH, Number(fish.growth) || 0),
         isInteracting: false
       }))
@@ -382,13 +386,18 @@ function feedFish() {
   }
 
   state.coins += FEED_REWARD;
-  state.fish = state.fish.map(fish => ({
-    ...fish,
-    growth: Math.min(MAX_GROWTH, fish.growth + 1)
-  }));
+  state.fish = state.fish.map(fish => {
+    const nextFeedCount = Math.min(MAX_FEED_COUNT, (Number(fish.feedCount) || 0) + 1);
+
+    return {
+      ...fish,
+      feedCount: nextFeedCount,
+      growth: Math.min(MAX_GROWTH, nextFeedCount * GROWTH_PER_FEED)
+    };
+  });
 
   dropFood();
-  state.fish.forEach(fish => showFishSpeech(fish.id, randomPick(["배고파요", "밥주세요", "나 이만큼 컸어요!"])));
+  state.fish.forEach(fish => showFishSpeech(fish.id, "잘 먹겠습니다!"));
   showToast("+10 🪙");
   saveState();
   updateUI();
