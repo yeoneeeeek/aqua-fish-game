@@ -36,6 +36,11 @@ const resetBtn = document.getElementById("resetBtn");
 const sellModal = document.getElementById("sellModal");
 const sellYesBtn = document.getElementById("sellYesBtn");
 const sellNoBtn = document.getElementById("sellNoBtn");
+const sellModalText = document.getElementById("sellModalText");
+const decoEditModal = document.getElementById("decoEditModal");
+const decoMoveBtn = document.getElementById("decoMoveBtn");
+const decoDeleteBtn = document.getElementById("decoDeleteBtn");
+const decoCancelBtn = document.getElementById("decoCancelBtn");
 
 const fishDesignTypes = [1, 2, 3, 4, 5];
 const fishMessages = ["나랑 놀래?", "배고파요", "밥주세요", "여기는 어디지?", "나 이만큼 컸어요!"];
@@ -46,6 +51,9 @@ let lastFrameTime = performance.now();
 let sellTargetFishId = null;
 let longPressTimer = null;
 let longPressTriggered = false;
+let decoLongPressTimer = null;
+let decoEditTargetId = null;
+let movingDecorationId = null;
 
 const algaeLayer = document.createElement("div");
 algaeLayer.className = "algae-layer";
@@ -110,7 +118,14 @@ function loadState() {
       lastHeartAt: Number(saved.lastHeartAt) || Date.now(),
       lastCleanAt: Number(saved.lastCleanAt) || 0,
       expansions: Math.max(0, Number(saved.expansions) || 0),
-      decorations: Array.isArray(saved.decorations) ? saved.decorations : [],
+      decorations: Array.isArray(saved.decorations)
+        ? saved.decorations.map((item, index) => ({
+          id: item.id || `deco_${index}_${Date.now()}`,
+          kind: item.kind === "rock" ? "rock" : "seaweed",
+          x: Number(item.x) || random(24, 280),
+          bottom: Number(item.bottom) || random(40, 56)
+        }))
+        : [],
       fish: saved.fish.map((fish, index) => ({
         id: fish.id || `fish_${index}_${Date.now()}`,
         type: fish.type || randomPick(fishDesignTypes),
@@ -140,6 +155,12 @@ function saveState() {
 
 function getMaxFishCount() {
   return BASE_MAX_FISH + (Math.max(0, Number(state.expansions) || 0) * MAX_FISH_PER_EXPANSION);
+}
+
+function getTankInnerScale() {
+  const level = Math.max(0, Number(state.expansions) || 0);
+  if (level <= 0) return 1;
+  return Math.max(0.62, 1 / (1 + 0.3 * level));
 }
 
 function random(min, max) {
@@ -230,7 +251,7 @@ function updateFishPositions(deltaSeconds) {
     fish.x += fish.vx * deltaSeconds;
     fish.y += fish.vy * deltaSeconds;
 
-    const scale = 1 + fish.growth / 100;
+    const scale = (1 + fish.growth / 100) * getTankInnerScale();
     const maxX = bounds.width - fishWidth * scale - padding;
     const maxY = bounds.height - fishHeight * scale - 86;
     const minX = padding;
@@ -306,24 +327,41 @@ function updateTankState() {
 function renderDecorations() {
   aquarium.querySelectorAll(".tank-deco").forEach(node => node.remove());
   const decorations = Array.isArray(state.decorations) ? state.decorations : [];
+  const innerScale = getTankInnerScale();
 
   decorations.forEach(item => {
     const deco = document.createElement("span");
     deco.className = `tank-deco ${item.kind === "rock" ? "rock-deco" : "seaweed-deco"}`;
+    deco.dataset.id = item.id;
     deco.style.left = `${Number(item.x) || random(25, aquarium.clientWidth - 70)}px`;
     deco.style.bottom = `${Number(item.bottom) || random(40, 54)}px`;
+    deco.style.setProperty("--deco-scale", innerScale.toFixed(4));
+
+    deco.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      startDecorationPress(item.id);
+    });
+    deco.addEventListener("pointerup", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDecorationPress();
+    });
+    deco.addEventListener("pointercancel", cancelDecorationPress);
+    deco.addEventListener("pointerleave", cancelDecorationPress);
+
     aquarium.appendChild(deco);
   });
 }
 
 function showToast(text) {
   const toast = document.createElement("div");
-  toast.className = "sparkle";
+  toast.className = "sparkle coin-toast";
   toast.textContent = text;
-  toast.style.left = `${random(90, aquarium.clientWidth - 130)}px`;
-  toast.style.top = `${random(70, 190)}px`;
+  toast.style.left = `${random(58, Math.max(60, aquarium.clientWidth - 210))}px`;
+  toast.style.top = `${random(72, 180)}px`;
   aquarium.appendChild(toast);
-  setTimeout(() => toast.remove(), 900);
+  setTimeout(() => toast.remove(), 2200);
 }
 
 function dropFood() {
@@ -393,6 +431,9 @@ function openSellModal(fishId) {
   }
 
   sellTargetFishId = fishId;
+  const sellReward = fish.isGolden ? 1000 : 500;
+  const fishLabel = fish.isGolden ? "황금 물고기" : "일반 물고기";
+  if (sellModalText) sellModalText.textContent = `${fishLabel}를 ${sellReward}코인에 판매하겠습니까?`;
   sellModal.classList.add("show");
   sellModal.setAttribute("aria-hidden", "false");
 }
@@ -550,6 +591,7 @@ function expandTank() {
   if (!spendCoins(EXPAND_PRICE)) return;
 
   state.expansions = Math.max(0, Number(state.expansions) || 0) + 1;
+  renderDecorations();
   showToast("수조 확장 완료!");
   saveState();
   updateUI();
@@ -571,6 +613,67 @@ function buyDecoration(kind) {
   showToast(kind === "rock" ? "바위 추가!" : "해조류 추가!");
   saveState();
   updateUI();
+}
+
+function startDecorationPress(decoId) {
+  cancelDecorationPress();
+  decoLongPressTimer = setTimeout(() => {
+    openDecoEditModal(decoId);
+  }, 1000);
+}
+
+function cancelDecorationPress() {
+  clearTimeout(decoLongPressTimer);
+  decoLongPressTimer = null;
+}
+
+function openDecoEditModal(decoId) {
+  decoEditTargetId = decoId;
+  decoEditModal.classList.add("show");
+  decoEditModal.setAttribute("aria-hidden", "false");
+}
+
+function closeDecoEditModal() {
+  decoEditTargetId = null;
+  decoEditModal.classList.remove("show");
+  decoEditModal.setAttribute("aria-hidden", "true");
+}
+
+function startMoveDecoration() {
+  if (!decoEditTargetId) return;
+  movingDecorationId = decoEditTargetId;
+  closeDecoEditModal();
+  showToast("옮길 위치를 터치해주세요");
+}
+
+function deleteDecoration() {
+  if (!decoEditTargetId) return;
+  const ok = confirm("삭제 시 코인은 환불되지 않습니다. 삭제할까요?");
+  if (!ok) return;
+
+  state.decorations = (Array.isArray(state.decorations) ? state.decorations : [])
+    .filter(item => item.id !== decoEditTargetId);
+  closeDecoEditModal();
+  renderDecorations();
+  showToast("삭제 완료");
+  saveState();
+}
+
+function moveDecorationTo(event) {
+  if (!movingDecorationId) return;
+  const rect = aquarium.getBoundingClientRect();
+  const target = state.decorations.find(item => item.id === movingDecorationId);
+  if (!target) {
+    movingDecorationId = null;
+    return;
+  }
+
+  target.x = Math.min(Math.max(event.clientX - rect.left - 18, 16), aquarium.clientWidth - 62);
+  target.bottom = Math.min(Math.max(aquarium.clientHeight - (event.clientY - rect.top) - 15, 36), 120);
+  movingDecorationId = null;
+  renderDecorations();
+  showToast("위치 이동 완료");
+  saveState();
 }
 
 function resetGame() {
@@ -612,6 +715,14 @@ sellNoBtn.addEventListener("click", closeSellModal);
 sellModal.addEventListener("click", event => {
   if (event.target === sellModal) closeSellModal();
 });
+
+decoMoveBtn.addEventListener("click", startMoveDecoration);
+decoDeleteBtn.addEventListener("click", deleteDecoration);
+decoCancelBtn.addEventListener("click", closeDecoEditModal);
+decoEditModal.addEventListener("click", event => {
+  if (event.target === decoEditModal) closeDecoEditModal();
+});
+aquarium.addEventListener("pointerdown", moveDecorationTo);
 
 renderFish();
 renderDecorations();

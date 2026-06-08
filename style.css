@@ -782,3 +782,121 @@ h1 {
   color: #0e9fbd;
   font-weight: 900;
 }
+
+/* v10 기능 보정: 수조 높이는 고정하고 내부 오브젝트 비율만 조정 */
+.aquarium.expansion-1,
+.aquarium.expansion-2,
+.aquarium.expansion-3 {
+  height: 455px;
+}
+
+@media (max-width: 390px) {
+  .aquarium.expansion-1,
+  .aquarium.expansion-2,
+  .aquarium.expansion-3 {
+    height: 445px;
+  }
+}
+
+.tank-deco {
+  pointer-events: auto;
+  touch-action: none;
+  transform: scale(var(--deco-scale, 1));
+  transform-origin: bottom center;
+}
+
+.tank-deco.seaweed-deco {
+  animation-name: decoSway;
+}
+
+@keyframes decoSway {
+  from { transform: scale(var(--deco-scale, 1)) rotate(-5deg); }
+  to { transform: scale(var(--deco-scale, 1)) rotate(7deg); }
+}
+
+.coin-toast {
+  z-index: 25;
+  min-width: 132px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #164e63;
+  box-shadow: 0 12px 22px rgba(6, 95, 135, 0.2);
+  font-size: 15px;
+  font-weight: 950;
+  text-align: center;
+  animation: coinToastPop 2.2s ease-out forwards;
+}
+
+@keyframes coinToastPop {
+  0% { transform: translateY(8px) scale(0.88); opacity: 0; }
+  14% { transform: translateY(0) scale(1.04); opacity: 1; }
+  76% { transform: translateY(-8px) scale(1); opacity: 1; }
+  100% { transform: translateY(-16px) scale(0.96); opacity: 0; }
+}
+
+.deco-edit-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(9, 54, 75, 0.32);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.deco-edit-modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.deco-edit-modal__box {
+  width: min(100%, 286px);
+  padding: 22px 18px 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 20px 38px rgba(6, 95, 135, 0.22);
+  text-align: center;
+  transform: translateY(8px) scale(0.96);
+  transition: transform 0.2s ease;
+}
+
+.deco-edit-modal.show .deco-edit-modal__box {
+  transform: translateY(0) scale(1);
+}
+
+.deco-edit-modal__box p {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #164e63;
+}
+
+.deco-edit-modal__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.deco-edit-modal__actions button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: #e0f7ff;
+  color: #164e63;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 8px 14px rgba(6, 95, 135, 0.12);
+}
+
+.deco-edit-modal__actions button:first-child {
+  background: linear-gradient(180deg, #8ee8a8, #26b36f);
+  color: #fff;
+}
+
+.deco-edit-modal__actions button:nth-child(2) {
+  background: linear-gradient(180deg, #ffd166, #ff9f1c);
+}
