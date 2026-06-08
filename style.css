@@ -477,8 +477,8 @@ h1 {
 
 .control-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
 .action-btn {
@@ -518,6 +518,8 @@ h1 {
 
 .primary { background: linear-gradient(180deg, #ff99ca, #ff5b93); }
 .secondary { background: linear-gradient(180deg, #5bd8ff, #1496df); }
+.decorate { background: linear-gradient(180deg, #8ee8a8, #26b36f); }
+
 .shop {
   grid-column: 1 / -1;
   background: linear-gradient(180deg, #ffd166, #ff9f1c);
@@ -608,4 +610,175 @@ h1 {
 
 .sell-modal__actions button:first-child {
   background: linear-gradient(180deg, #ffe08a 0%, #ffb703 100%);
+}
+
+
+/* v9 기능 추가: 기존 톤을 유지한 최소 확장 스타일 */
+.fish.is-golden { --fish-main: #ffd700; --fish-sub: #ff9f1c; }
+.fish.is-golden .fish-body { box-shadow: inset 8px 8px 0 rgba(255,255,255,0.42), 0 0 14px rgba(255, 215, 0, 0.72); }
+.fish.is-golden .growth-complete { background: rgba(255, 235, 120, 0.98); }
+
+.aquarium.expansion-1 { height: 592px; }
+.aquarium.expansion-2 { height: 650px; }
+.aquarium.expansion-3 { height: 705px; }
+
+.tank-deco {
+  position: absolute;
+  bottom: 43px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tank-deco.seaweed-deco {
+  width: 18px;
+  height: 72px;
+  border-radius: 50% 50% 8px 8px;
+  background: linear-gradient(90deg, #16a34a, #86efac);
+  transform-origin: bottom center;
+  animation: sway 2.9s ease-in-out infinite alternate;
+}
+
+.tank-deco.rock-deco {
+  width: 42px;
+  height: 30px;
+  border-radius: 50% 50% 13px 13px;
+  background: #94a3b8;
+  box-shadow: 10px -8px 0 -5px #cbd5e1, -9px -6px 0 -5px #64748b;
+}
+
+.algae-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 14% 24%, rgba(34, 197, 94, 0.32) 0 9%, transparent 17%),
+    radial-gradient(circle at 82% 34%, rgba(21, 128, 61, 0.28) 0 8%, transparent 16%),
+    radial-gradient(circle at 46% 78%, rgba(22, 163, 74, 0.24) 0 10%, transparent 20%),
+    linear-gradient(180deg, rgba(22, 101, 52, 0.10), rgba(22, 101, 52, 0.18));
+  transition: opacity 0.28s ease;
+}
+
+.aquarium.has-algae .algae-layer { opacity: 1; }
+
+.clean-sponge {
+  position: absolute;
+  z-index: 11;
+  top: 40px;
+  left: 24px;
+  width: 42px;
+  height: 28px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff176, #facc15);
+  box-shadow: 0 8px 16px rgba(6, 95, 135, 0.2);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aquarium.is-cleaning .clean-sponge {
+  animation: spongeClean 1.55s ease-in-out forwards;
+}
+
+@keyframes spongeClean {
+  0% { transform: translate(0, 0) rotate(-8deg); opacity: 0; }
+  8% { opacity: 1; }
+  20% { transform: translate(238px, 45px) rotate(8deg); }
+  40% { transform: translate(35px, 120px) rotate(-7deg); }
+  60% { transform: translate(248px, 195px) rotate(9deg); }
+  80% { transform: translate(52px, 278px) rotate(-6deg); }
+  100% { transform: translate(245px, 355px) rotate(8deg); opacity: 0; }
+}
+
+.clean-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.7) 0 7%, transparent 26%);
+}
+
+.aquarium.is-shining .clean-shine {
+  animation: cleanShine 1s ease-out forwards;
+}
+
+@keyframes cleanShine {
+  0% { opacity: 0; transform: scale(0.8); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+
+.decorate-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(9, 54, 75, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.decorate-modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.decorate-modal__box {
+  width: min(100%, 292px);
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 20px 38px rgba(6, 95, 135, 0.22);
+}
+
+.decorate-modal__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.decorate-modal__head strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.decorate-modal__head button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: #e0f7ff;
+  color: #164e63;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.decorate-menu {
+  display: grid;
+  gap: 9px;
+}
+
+.decorate-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: #f0fbff;
+  color: #164e63;
+  box-shadow: 0 8px 14px rgba(6, 95, 135, 0.1);
+  font-weight: 900;
+}
+
+.decorate-menu small {
+  color: #0e9fbd;
+  font-weight: 900;
 }

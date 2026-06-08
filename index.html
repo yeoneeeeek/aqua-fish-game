@@ -64,6 +64,10 @@
           수조청소
           <small id="cleanTimer">READY</small>
         </button>
+        <button type="button" id="decorateBtn" class="action-btn decorate">
+          <span>🪸</span>
+          수조 꾸미기
+        </button>
         <button type="button" id="buyFishBtn" class="action-btn shop">
           <span>🐠</span>
           물고기 구매
@@ -71,6 +75,29 @@
       </section>
 
       <button type="button" id="resetBtn" class="reset-btn">저장 데이터 초기화</button>
+
+      <div class="decorate-modal" id="decorateModal" aria-hidden="true">
+        <div class="decorate-modal__box" role="dialog" aria-modal="true" aria-labelledby="decorateModalTitle">
+          <div class="decorate-modal__head">
+            <strong id="decorateModalTitle">수조 꾸미기</strong>
+            <button type="button" id="decorateCloseBtn" aria-label="닫기">×</button>
+          </div>
+          <div class="decorate-menu">
+            <button type="button" id="expandTankBtn">
+              <span>수조 확장하기</span>
+              <small>5000코인</small>
+            </button>
+            <button type="button" id="buySeaweedBtn">
+              <span>해조류</span>
+              <small>100코인</small>
+            </button>
+            <button type="button" id="buyRockBtn">
+              <span>바위</span>
+              <small>200코인</small>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="sell-modal" id="sellModal" aria-hidden="true">
         <div class="sell-modal__box" role="dialog" aria-modal="true" aria-labelledby="sellModalText">
