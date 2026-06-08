@@ -54,6 +54,8 @@ let longPressTriggered = false;
 let decoLongPressTimer = null;
 let decoEditTargetId = null;
 let movingDecorationId = null;
+let activeDecoPointerId = null;
+let activeDecoId = null;
 
 const algaeLayer = document.createElement("div");
 algaeLayer.className = "algae-layer";
@@ -337,18 +339,6 @@ function renderDecorations() {
     deco.style.bottom = `${Number(item.bottom) || random(40, 54)}px`;
     deco.style.setProperty("--deco-scale", innerScale.toFixed(4));
 
-    deco.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      startDecorationPress(item.id);
-    });
-    deco.addEventListener("pointerup", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      cancelDecorationPress();
-    });
-    deco.addEventListener("pointercancel", cancelDecorationPress);
-    deco.addEventListener("pointerleave", cancelDecorationPress);
 
     aquarium.appendChild(deco);
   });
@@ -617,14 +607,41 @@ function buyDecoration(kind) {
 
 function startDecorationPress(decoId) {
   cancelDecorationPress();
+  activeDecoId = decoId;
   decoLongPressTimer = setTimeout(() => {
-    openDecoEditModal(decoId);
+    if (!activeDecoId) return;
+    openDecoEditModal(activeDecoId);
+    activeDecoId = null;
+    activeDecoPointerId = null;
+    decoLongPressTimer = null;
   }, 1000);
 }
 
 function cancelDecorationPress() {
   clearTimeout(decoLongPressTimer);
   decoLongPressTimer = null;
+  activeDecoId = null;
+  activeDecoPointerId = null;
+}
+
+function handleDecorationPointerDown(event) {
+  const deco = event.target.closest && event.target.closest(".tank-deco");
+  if (!deco || !aquarium.contains(deco) || movingDecorationId) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  activeDecoPointerId = event.pointerId;
+  deco.setPointerCapture?.(event.pointerId);
+  startDecorationPress(deco.dataset.id);
+}
+
+function handleDecorationPointerEnd(event) {
+  if (activeDecoPointerId !== event.pointerId) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const deco = event.target.closest && event.target.closest(".tank-deco");
+  deco?.releasePointerCapture?.(event.pointerId);
+  cancelDecorationPress();
 }
 
 function openDecoEditModal(decoId) {
@@ -722,6 +739,9 @@ decoCancelBtn.addEventListener("click", closeDecoEditModal);
 decoEditModal.addEventListener("click", event => {
   if (event.target === decoEditModal) closeDecoEditModal();
 });
+aquarium.addEventListener("pointerdown", handleDecorationPointerDown, true);
+aquarium.addEventListener("pointerup", handleDecorationPointerEnd, true);
+aquarium.addEventListener("pointercancel", handleDecorationPointerEnd, true);
 aquarium.addEventListener("pointerdown", moveDecorationTo);
 
 renderFish();

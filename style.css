@@ -900,3 +900,24 @@ h1 {
 .deco-edit-modal__actions button:nth-child(2) {
   background: linear-gradient(180deg, #ffd166, #ff9f1c);
 }
+
+
+/* v11 기능 보정: 꾸미기 아이템 길게 누르기 터치 영역 안정화 */
+.tank-deco {
+  z-index: 7;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.tank-deco::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+}
+.tank-deco.seaweed-deco::before {
+  inset: -14px -18px -6px;
+}
+.tank-deco.rock-deco::before {
+  inset: -18px -14px -10px;
+}
