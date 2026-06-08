@@ -973,3 +973,32 @@ h1 {
   font-weight: 950;
   box-shadow: 0 9px 16px rgba(255, 159, 67, 0.24);
 }
+
+/* v14 기능 보정: 물고기 더블클릭 이벤트 안정화 + 이동 중 꾸미기 프리뷰 */
+.fish,
+.fish * {
+  pointer-events: auto;
+}
+
+.fish-art,
+.fish-art *,
+.fish-speech,
+.growth-complete {
+  pointer-events: none;
+}
+
+.moving-deco-ghost {
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  bottom: auto;
+  pointer-events: none;
+  opacity: 0.72;
+  transform: translate(-50%, -50%) scale(var(--deco-scale, 1));
+  filter: drop-shadow(0 10px 14px rgba(6, 95, 135, 0.28));
+}
+
+.moving-deco-ghost.seaweed-deco {
+  animation: none;
+}

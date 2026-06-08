@@ -1,6 +1,6 @@
 const STORAGE_KEY = "aquaFishGame_v2";
 const BACKUP_STORAGE_KEY = "aquaFishGame_v2_backup";
-const UPDATE_NOTICE_KEY = "aquaFishGame_notice_v13";
+const UPDATE_NOTICE_KEY = "aquaFishGame_notice_v14";
 
 const MAX_HEARTS = 5;
 const HEART_COOLDOWN = 15 * 1000;
@@ -21,7 +21,7 @@ const GROWTH_PER_FEED = MAX_GROWTH / MAX_FEED_COUNT;
 const SELL_REWARD_NORMAL = 200;
 const SELL_REWARD_GOLDEN = 500;
 const FISH_SPEED_LEVELS = [16, 23, 30];
-const DOUBLE_TAP_TIME = 360;
+const DOUBLE_TAP_TIME = 520;
 const DECORATION_LONG_PRESS_TIME = 1000;
 
 const aquarium = document.getElementById("aquarium");
@@ -60,6 +60,7 @@ let fishTapInfo = { id: null, time: 0 };
 let decoLongPressTimer = null;
 let decoEditTargetId = null;
 let movingDecorationId = null;
+let movingDecoGhost = null;
 let activeDecoPointerId = null;
 let activeDecoId = null;
 
@@ -274,11 +275,23 @@ function renderFish() {
 
     fishEl.addEventListener("pointerup", event => {
       event.preventDefault();
+      event.stopPropagation();
       handleFishTap(fish.id);
+    });
+
+    fishEl.addEventListener("click", event => {
+      if (event.detail >= 2) {
+        event.preventDefault();
+        event.stopPropagation();
+        fishTapInfo = { id: null, time: 0 };
+        openSellModal(fish.id);
+      }
     });
 
     fishEl.addEventListener("dblclick", event => {
       event.preventDefault();
+      event.stopPropagation();
+      fishTapInfo = { id: null, time: 0 };
       openSellModal(fish.id);
     });
 
@@ -715,7 +728,35 @@ function startMoveDecoration() {
   if (!decoEditTargetId) return;
   movingDecorationId = decoEditTargetId;
   closeDecoEditModal();
+  createMovingDecorationGhost(movingDecorationId);
   showToast("옮길 위치를 터치해주세요");
+}
+
+function getDecorationById(decoId) {
+  return (Array.isArray(state.decorations) ? state.decorations : []).find(item => item.id === decoId);
+}
+
+function createMovingDecorationGhost(decoId) {
+  removeMovingDecorationGhost();
+  const target = getDecorationById(decoId);
+  if (!target) return;
+
+  movingDecoGhost = document.createElement("span");
+  movingDecoGhost.className = `tank-deco moving-deco-ghost ${target.kind === "rock" ? "rock-deco" : "seaweed-deco"}`;
+  movingDecoGhost.setAttribute("aria-hidden", "true");
+  movingDecoGhost.style.setProperty("--deco-scale", getTankInnerScale().toFixed(4));
+  document.body.appendChild(movingDecoGhost);
+}
+
+function updateMovingDecorationGhost(event) {
+  if (!movingDecoGhost) return;
+  movingDecoGhost.style.left = `${event.clientX}px`;
+  movingDecoGhost.style.top = `${event.clientY}px`;
+}
+
+function removeMovingDecorationGhost() {
+  if (movingDecoGhost) movingDecoGhost.remove();
+  movingDecoGhost = null;
 }
 
 function deleteDecoration() {
@@ -733,16 +774,28 @@ function deleteDecoration() {
 
 function moveDecorationTo(event) {
   if (!movingDecorationId) return;
+
   const rect = aquarium.getBoundingClientRect();
-  const target = state.decorations.find(item => item.id === movingDecorationId);
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  // 수조 밖을 누른 경우 이동 상태를 유지한다.
+  if (x < 0 || y < 0 || x > aquarium.clientWidth || y > aquarium.clientHeight) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const target = getDecorationById(movingDecorationId);
   if (!target) {
     movingDecorationId = null;
+    removeMovingDecorationGhost();
     return;
   }
 
-  target.x = Math.min(Math.max(event.clientX - rect.left - 18, 16), aquarium.clientWidth - 62);
-  target.bottom = Math.min(Math.max(aquarium.clientHeight - (event.clientY - rect.top) - 15, 36), 120);
+  target.x = Math.min(Math.max(x - 18, 16), aquarium.clientWidth - 62);
+  target.bottom = Math.min(Math.max(aquarium.clientHeight - y - 15, 36), 120);
   movingDecorationId = null;
+  removeMovingDecorationGhost();
   renderDecorations();
   showToast("위치 이동 완료");
   saveState();
@@ -757,6 +810,8 @@ function resetGame() {
   state = createInitialState();
   fishNodes.forEach(node => node.remove());
   fishNodes.clear();
+  removeMovingDecorationGhost();
+  movingDecorationId = null;
   renderFish();
   renderDecorations();
   saveState();
@@ -812,7 +867,8 @@ decoCancelBtn.addEventListener("click", closeDecoEditModal);
 decoEditModal.addEventListener("click", event => {
   if (event.target === decoEditModal) closeDecoEditModal();
 });
-aquarium.addEventListener("pointerdown", moveDecorationTo);
+aquarium.addEventListener("pointerdown", moveDecorationTo, true);
+window.addEventListener("pointermove", updateMovingDecorationGhost);
 
 renderFish();
 renderDecorations();
