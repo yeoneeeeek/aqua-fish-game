@@ -1,4 +1,6 @@
 const STORAGE_KEY = "aquaFishGame_v2";
+const BACKUP_STORAGE_KEY = "aquaFishGame_v2_backup";
+const UPDATE_NOTICE_KEY = "aquaFishGame_notice_v13";
 
 const MAX_HEARTS = 5;
 const HEART_COOLDOWN = 15 * 1000;
@@ -14,9 +16,12 @@ const GOLDEN_CHANCE = 0.3;
 const FEED_REWARD = 10;
 const CLEAN_REWARD = 30;
 const MAX_GROWTH = 100;
-const MAX_FEED_COUNT = 30;
+const MAX_FEED_COUNT = 43; // 기존 30회 성장보다 약 30% 느리게 조정
 const GROWTH_PER_FEED = MAX_GROWTH / MAX_FEED_COUNT;
-const FISH_LONG_PRESS_TIME = 500;
+const SELL_REWARD_NORMAL = 200;
+const SELL_REWARD_GOLDEN = 500;
+const FISH_SPEED_LEVELS = [16, 23, 30];
+const DOUBLE_TAP_TIME = 360;
 const DECORATION_LONG_PRESS_TIME = 1000;
 
 const aquarium = document.getElementById("aquarium");
@@ -51,8 +56,7 @@ let state = loadState();
 let fishNodes = new Map();
 let lastFrameTime = performance.now();
 let sellTargetFishId = null;
-let longPressTimer = null;
-let longPressTriggered = false;
+let fishTapInfo = { id: null, time: 0 };
 let decoLongPressTimer = null;
 let decoEditTargetId = null;
 let movingDecorationId = null;
@@ -87,14 +91,16 @@ function createFishData(isFirst = false) {
   const bounds = getAquariumBounds();
   const angle = randomPick([-30, 30]) * Math.PI / 180;
   const direction = Math.random() > 0.5 ? 1 : -1;
+  const speed = getRandomFishSpeed();
 
   return {
     id: crypto.randomUUID ? crypto.randomUUID() : `fish_${Date.now()}_${Math.random()}`,
     type: isFirst ? 1 : randomPick(fishDesignTypes),
     x: random(30, Math.max(31, bounds.width - 90)),
     y: random(60, Math.max(61, bounds.height - 140)),
-    vx: direction * random(18, 31),
+    vx: direction * speed,
     vy: Math.sin(angle) * random(14, 26),
+    speed,
     growth: 0,
     feedCount: 0,
     isInteracting: false,
@@ -109,52 +115,73 @@ function getAquariumBounds() {
   };
 }
 
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!saved || !Array.isArray(saved.fish) || saved.fish.length === 0) {
-      return createInitialState();
-    }
+function readStoredState() {
+  const keys = [STORAGE_KEY, BACKUP_STORAGE_KEY];
 
-    return {
-      coins: Number(saved.coins) || 0,
-      hearts: Math.min(MAX_HEARTS, Number(saved.hearts) || 0),
-      lastHeartAt: Number(saved.lastHeartAt) || Date.now(),
-      lastCleanAt: Number(saved.lastCleanAt) || 0,
-      expansions: Math.max(0, Number(saved.expansions) || 0),
-      decorations: Array.isArray(saved.decorations)
-        ? saved.decorations.map((item, index) => ({
-          id: item.id || `deco_${index}_${Date.now()}`,
-          kind: item.kind === "rock" ? "rock" : "seaweed",
-          x: Number(item.x) || random(24, 280),
-          bottom: Number(item.bottom) || random(40, 56)
-        }))
-        : [],
-      fish: saved.fish.map((fish, index) => ({
-        id: fish.id || `fish_${index}_${Date.now()}`,
-        type: fish.type || randomPick(fishDesignTypes),
-        x: Number(fish.x) || random(40, 240),
-        y: Number(fish.y) || random(80, 280),
-        vx: Number(fish.vx) || randomPick([-1, 1]) * random(18, 31),
-        vy: Number(fish.vy) || randomPick([-1, 1]) * random(8, 18),
-        feedCount: Math.min(MAX_FEED_COUNT, Number.isFinite(Number(fish.feedCount)) && Number(fish.feedCount) > 0
-          ? Number(fish.feedCount)
-          : Math.round((Number(fish.growth) || 0) / GROWTH_PER_FEED)),
-        growth: 0,
-        isInteracting: false,
-        isGolden: Boolean(fish.isGolden)
-      })).map(fish => ({
-        ...fish,
-        growth: Math.min(MAX_GROWTH, fish.feedCount * GROWTH_PER_FEED)
-      }))
-    };
-  } catch (error) {
-    return createInitialState();
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.fish) && parsed.fish.length > 0) return parsed;
+    } catch (error) {
+      console.warn(`저장 데이터 읽기 실패: ${key}`, error);
+    }
   }
+
+  return null;
+}
+
+function loadState() {
+  const saved = readStoredState();
+  if (!saved) return createInitialState();
+
+  const migratedFish = saved.fish.map((fish, index) => {
+    const feedCount = Math.min(MAX_FEED_COUNT, Number.isFinite(Number(fish.feedCount)) && Number(fish.feedCount) > 0
+      ? Number(fish.feedCount)
+      : Math.round((Number(fish.growth) || 0) / GROWTH_PER_FEED));
+
+    return normalizeFishSpeed({
+      id: fish.id || `fish_${index}_${Date.now()}`,
+      type: fish.type || randomPick(fishDesignTypes),
+      x: Number(fish.x) || random(40, 240),
+      y: Number(fish.y) || random(80, 280),
+      vx: Number(fish.vx) || randomPick([-1, 1]) * getRandomFishSpeed(),
+      vy: Number(fish.vy) || randomPick([-1, 1]) * random(8, 18),
+      speed: Number(fish.speed) || 0,
+      feedCount,
+      growth: Math.min(MAX_GROWTH, feedCount * GROWTH_PER_FEED),
+      isInteracting: false,
+      isGolden: Boolean(fish.isGolden)
+    });
+  });
+
+  return {
+    coins: Number(saved.coins) || 0,
+    hearts: Math.min(MAX_HEARTS, Number(saved.hearts) || 0),
+    lastHeartAt: Number(saved.lastHeartAt) || Date.now(),
+    lastCleanAt: Number(saved.lastCleanAt) || 0,
+    expansions: Math.max(0, Number(saved.expansions) || 0),
+    decorations: Array.isArray(saved.decorations)
+      ? saved.decorations.map((item, index) => ({
+        id: item.id || `deco_${index}_${Date.now()}`,
+        kind: item.kind === "rock" ? "rock" : "seaweed",
+        x: Number(item.x) || random(24, 280),
+        bottom: Number(item.bottom) || random(40, 56)
+      }))
+      : [],
+    fish: migratedFish
+  };
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    const payload = JSON.stringify(state);
+    localStorage.setItem(STORAGE_KEY, payload);
+    localStorage.setItem(BACKUP_STORAGE_KEY, payload);
+  } catch (error) {
+    console.warn("게임 저장에 실패했어요.", error);
+  }
 }
 
 function getMaxFishCount() {
@@ -173,6 +200,26 @@ function random(min, max) {
 
 function randomPick(items) {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+function getRandomFishSpeed() {
+  return randomPick(FISH_SPEED_LEVELS);
+}
+
+function normalizeFishSpeed(fish) {
+  const direction = Number(fish.vx) >= 0 ? 1 : -1;
+  const current = Math.abs(Number(fish.vx) || 0);
+  const closest = FISH_SPEED_LEVELS.reduce((best, speed) => {
+    return Math.abs(speed - current) < Math.abs(best - current) ? speed : best;
+  }, FISH_SPEED_LEVELS[1]);
+
+  fish.speed = Number(fish.speed) || closest || getRandomFishSpeed();
+  fish.vx = direction * fish.speed;
+  return fish;
+}
+
+function getSellReward(fish) {
+  return fish && fish.isGolden ? SELL_REWARD_GOLDEN : SELL_REWARD_NORMAL;
 }
 
 function formatTime(ms) {
@@ -225,18 +272,15 @@ function renderFish() {
       </span>
     `;
 
-    fishEl.addEventListener("pointerdown", event => {
-      event.preventDefault();
-      startFishPress(fish.id);
-    });
-
     fishEl.addEventListener("pointerup", event => {
       event.preventDefault();
-      finishFishPress(fish.id);
+      handleFishTap(fish.id);
     });
 
-    fishEl.addEventListener("pointercancel", cancelFishPress);
-    fishEl.addEventListener("pointerleave", cancelFishPress);
+    fishEl.addEventListener("dblclick", event => {
+      event.preventDefault();
+      openSellModal(fish.id);
+    });
 
     aquarium.appendChild(fishEl);
     fishNodes.set(fish.id, fishEl);
@@ -265,7 +309,8 @@ function updateFishPositions(deltaSeconds) {
       fish.x = Math.min(Math.max(fish.x, minX), maxX);
       const direction = fish.x <= minX ? 1 : -1;
       const angle = randomPick([-30, 30]) * Math.PI / 180;
-      const speed = random(18, 31);
+      const speed = getRandomFishSpeed();
+      fish.speed = speed;
       fish.vx = direction * speed;
       fish.vy = Math.sin(angle) * random(20, 34);
       fish.justTurned = true;
@@ -392,30 +437,18 @@ function showFishSpeech(fishId, message = randomPick(fishMessages)) {
   }, 2600);
 }
 
-function startFishPress(fishId) {
-  cancelFishPress();
-  longPressTriggered = false;
-  longPressTimer = setTimeout(() => {
-    longPressTriggered = true;
+function handleFishTap(fishId) {
+  const now = Date.now();
+  const isDoubleTap = fishTapInfo.id === fishId && now - fishTapInfo.time <= DOUBLE_TAP_TIME;
+
+  if (isDoubleTap) {
+    fishTapInfo = { id: null, time: 0 };
     openSellModal(fishId);
-  }, FISH_LONG_PRESS_TIME);
-}
-
-function finishFishPress(fishId) {
-  clearTimeout(longPressTimer);
-  longPressTimer = null;
-
-  if (longPressTriggered) {
-    longPressTriggered = false;
     return;
   }
 
+  fishTapInfo = { id: fishId, time: now };
   interactWithFish(fishId);
-}
-
-function cancelFishPress() {
-  clearTimeout(longPressTimer);
-  longPressTimer = null;
 }
 
 function openSellModal(fishId) {
@@ -429,7 +462,7 @@ function openSellModal(fishId) {
   }
 
   sellTargetFishId = fishId;
-  const sellReward = fish.isGolden ? 1000 : 500;
+  const sellReward = getSellReward(fish);
   const fishLabel = fish.isGolden ? "황금 물고기" : "일반 물고기";
   if (sellModalText) sellModalText.textContent = `${fishLabel}를 ${sellReward}코인에 판매하겠습니까?`;
   sellModal.classList.add("show");
@@ -456,7 +489,7 @@ function sellFish() {
   if (node) node.remove();
   fishNodes.delete(soldFish.id);
 
-  const sellReward = soldFish.isGolden ? 1000 : 500;
+  const sellReward = getSellReward(soldFish);
   state.coins += sellReward;
   showToast(`판매 완료! +${sellReward} 🪙`);
   closeSellModal();
@@ -720,6 +753,7 @@ function resetGame() {
   if (!ok) return;
 
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(BACKUP_STORAGE_KEY);
   state = createInitialState();
   fishNodes.forEach(node => node.remove());
   fishNodes.clear();
@@ -727,6 +761,23 @@ function resetGame() {
   renderDecorations();
   saveState();
   updateUI();
+}
+
+function showUpdateNotice() {
+  if (localStorage.getItem(UPDATE_NOTICE_KEY) === "shown") return;
+
+  const notice = document.getElementById("updateNoticeModal");
+  const closeBtn = document.getElementById("updateNoticeCloseBtn");
+  if (!notice || !closeBtn) return;
+
+  notice.classList.add("show");
+  notice.setAttribute("aria-hidden", "false");
+
+  closeBtn.addEventListener("click", () => {
+    notice.classList.remove("show");
+    notice.setAttribute("aria-hidden", "true");
+    localStorage.setItem(UPDATE_NOTICE_KEY, "shown");
+  }, { once: true });
 }
 
 function gameLoop(currentTime) {
@@ -766,6 +817,7 @@ aquarium.addEventListener("pointerdown", moveDecorationTo);
 renderFish();
 renderDecorations();
 updateUI();
+showUpdateNotice();
 setInterval(updateUI, 500);
 setInterval(saveState, 3000);
 setInterval(showRandomFishSpeech, 6500);

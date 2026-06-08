@@ -921,3 +921,55 @@ h1 {
 .tank-deco.rock-deco::before {
   inset: -18px -14px -10px;
 }
+
+
+.update-notice-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(10, 77, 104, 0.28);
+  backdrop-filter: blur(3px);
+}
+
+.update-notice-modal.show {
+  display: flex;
+}
+
+.update-notice-modal__box {
+  width: min(100%, 310px);
+  padding: 20px 18px 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 36px rgba(8, 89, 129, 0.24);
+  border: 3px solid rgba(255,255,255,0.95);
+}
+
+.update-notice-modal__box strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 18px;
+  letter-spacing: -0.04em;
+}
+
+.update-notice-modal__box ul {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.55;
+  font-weight: 700;
+}
+
+.update-notice-modal__box button {
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 14px;
+  background: linear-gradient(180deg, #ffcf6f, #ff9f43);
+  color: #7c3f00;
+  font-weight: 950;
+  box-shadow: 0 9px 16px rgba(255, 159, 67, 0.24);
+}
