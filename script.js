@@ -16,6 +16,8 @@ const CLEAN_REWARD = 30;
 const MAX_GROWTH = 100;
 const MAX_FEED_COUNT = 30;
 const GROWTH_PER_FEED = MAX_GROWTH / MAX_FEED_COUNT;
+const FISH_LONG_PRESS_TIME = 500;
+const DECORATION_LONG_PRESS_TIME = 1000;
 
 const aquarium = document.getElementById("aquarium");
 const coinCount = document.getElementById("coinCount");
@@ -339,6 +341,12 @@ function renderDecorations() {
     deco.style.bottom = `${Number(item.bottom) || random(40, 54)}px`;
     deco.style.setProperty("--deco-scale", innerScale.toFixed(4));
 
+    // 꾸미기 아이템은 수조/물고기 이벤트와 섞이지 않도록
+    // 생성 시점에 직접 long press 이벤트를 연결한다.
+    deco.addEventListener("pointerdown", handleDecorationPointerDown);
+    deco.addEventListener("pointerup", handleDecorationPointerEnd);
+    deco.addEventListener("pointercancel", handleDecorationPointerEnd);
+    deco.addEventListener("lostpointercapture", handleDecorationPointerEnd);
 
     aquarium.appendChild(deco);
   });
@@ -390,7 +398,7 @@ function startFishPress(fishId) {
   longPressTimer = setTimeout(() => {
     longPressTriggered = true;
     openSellModal(fishId);
-  }, 650);
+  }, FISH_LONG_PRESS_TIME);
 }
 
 function finishFishPress(fishId) {
@@ -605,46 +613,60 @@ function buyDecoration(kind) {
   updateUI();
 }
 
-function startDecorationPress(decoId) {
+function startDecorationPress(decoId, pointerId, targetNode) {
   cancelDecorationPress();
   activeDecoId = decoId;
+  activeDecoPointerId = pointerId;
+
   decoLongPressTimer = setTimeout(() => {
     if (!activeDecoId) return;
-    openDecoEditModal(activeDecoId);
+
+    const pressedDecoId = activeDecoId;
+    decoLongPressTimer = null;
     activeDecoId = null;
     activeDecoPointerId = null;
-    decoLongPressTimer = null;
-  }, 1000);
+
+    targetNode?.releasePointerCapture?.(pointerId);
+    openDecoEditModal(pressedDecoId);
+  }, DECORATION_LONG_PRESS_TIME);
 }
 
 function cancelDecorationPress() {
-  clearTimeout(decoLongPressTimer);
+  if (decoLongPressTimer) {
+    clearTimeout(decoLongPressTimer);
+  }
   decoLongPressTimer = null;
   activeDecoId = null;
   activeDecoPointerId = null;
 }
 
 function handleDecorationPointerDown(event) {
-  const deco = event.target.closest && event.target.closest(".tank-deco");
+  const deco = event.currentTarget;
   if (!deco || !aquarium.contains(deco) || movingDecorationId) return;
 
   event.preventDefault();
   event.stopPropagation();
-  activeDecoPointerId = event.pointerId;
   deco.setPointerCapture?.(event.pointerId);
-  startDecorationPress(deco.dataset.id);
+  startDecorationPress(deco.dataset.id, event.pointerId, deco);
 }
 
 function handleDecorationPointerEnd(event) {
-  if (activeDecoPointerId !== event.pointerId) return;
+  const deco = event.currentTarget;
+
+  if (activeDecoPointerId !== null && activeDecoPointerId !== event.pointerId) return;
+
   event.preventDefault();
   event.stopPropagation();
-  const deco = event.target.closest && event.target.closest(".tank-deco");
   deco?.releasePointerCapture?.(event.pointerId);
-  cancelDecorationPress();
+
+  // long press가 이미 완료되어 팝업이 열린 상태라면 닫지 않는다.
+  if (decoLongPressTimer) {
+    cancelDecorationPress();
+  }
 }
 
 function openDecoEditModal(decoId) {
+  closeDecorateModal();
   decoEditTargetId = decoId;
   decoEditModal.classList.add("show");
   decoEditModal.setAttribute("aria-hidden", "false");
@@ -739,9 +761,6 @@ decoCancelBtn.addEventListener("click", closeDecoEditModal);
 decoEditModal.addEventListener("click", event => {
   if (event.target === decoEditModal) closeDecoEditModal();
 });
-aquarium.addEventListener("pointerdown", handleDecorationPointerDown, true);
-aquarium.addEventListener("pointerup", handleDecorationPointerEnd, true);
-aquarium.addEventListener("pointercancel", handleDecorationPointerEnd, true);
 aquarium.addEventListener("pointerdown", moveDecorationTo);
 
 renderFish();
